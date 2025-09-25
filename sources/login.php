@@ -5,26 +5,47 @@ session_start();
 require_once 'models/UserModel.php';
 $userModel = new UserModel();
 
+// Tạo CSRF token nếu chưa có
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
+// Hàm kiểm tra token
+function validate_csrf($token) {
+    return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
+}
 
 if (!empty($_POST['submit'])) {
+    // Kiểm tra CSRF token trước khi xử lý
+    if (!isset($_POST['csrf_token']) || !validate_csrf($_POST['csrf_token'])) {
+        $_SESSION['message'] = 'Invalid CSRF token!';
+        header('location: login.php');
+        exit;
+    }
+
     $users = [
         'username' => $_POST['username'],
         'password' => $_POST['password']
     ];
-    $user = NULL;
-    if ($user = $userModel->auth($users['username'], $users['password'])) {
-        //Login successful
-        $_SESSION['id'] = $user[0]['id'];
 
+    // Auth user (hàm auth cần trả về đúng một user với id, name)
+    $user = $userModel->auth($users['username'], $users['password']);
+
+    if ($user) {
+        // Nếu $user là mảng nhiều dòng, lấy dòng đầu tiên
+        if (isset($user[0])) {
+            $user = $user[0];
+        }
+        //Login successful
+        $_SESSION['id'] = $user['id'];
         $_SESSION['message'] = 'Login successful';
         header('location: list_users.php');
-    }else {
+        exit;
+    } else {
         //Login failed
         $_SESSION['message'] = 'Login failed';
     }
-
 }
-
 ?>
 <!DOCTYPE html>
 <html>
@@ -43,17 +64,24 @@ if (!empty($_POST['submit'])) {
                     <div style="float:right; font-size: 80%; position: relative; top:-10px"><a href="#">Forgot password?</a></div>
                 </div>
 
+                <?php if (!empty($_SESSION['message'])): ?>
+                    <div class="alert alert-info"><?php echo htmlspecialchars($_SESSION['message']); ?></div>
+                    <?php unset($_SESSION['message']); ?>
+                <?php endif; ?>
+
                 <div style="padding-top:30px" class="panel-body" >
                     <form method="post" class="form-horizontal" role="form">
+                        <!-- CSRF token -->
+                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
 
                         <div class="margin-bottom-25 input-group">
                             <span class="input-group-addon"><i class="glyphicon glyphicon-user"></i></span>
-                            <input id="login-username" type="text" class="form-control" name="username" value="" placeholder="username or email">
+                            <input id="login-username" type="text" class="form-control" name="username" value="" placeholder="username or email" required>
                         </div>
 
                         <div class="margin-bottom-25 input-group">
                             <span class="input-group-addon"><i class="glyphicon glyphicon-lock"></i></span>
-                            <input id="login-password" type="password" class="form-control" name="password" placeholder="password">
+                            <input id="login-password" type="password" class="form-control" name="password" placeholder="password" required>
                         </div>
 
                         <div class="margin-bottom-25">
