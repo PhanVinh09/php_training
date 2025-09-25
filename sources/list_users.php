@@ -56,9 +56,13 @@ $users = $userModel->getUsers($params);
                                 <a href="view_user.php?id=<?php echo $user['id'] ?>">
                                     <i class="fa fa-eye" aria-hidden="true" title="View"></i>
                                 </a>
-                                <a href="delete_user.php?id=<?php echo $user['id'] ?>">
-                                    <i class="fa fa-eraser" aria-hidden="true" title="Delete"></i>
-                                </a>
+                                <form method="POST" action="delete_user.php" style="display:inline">
+                                    <input type="hidden" name="id" value="<?php echo htmlspecialchars($user['id']); ?>">
+                                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
+                                    <button type="submit" class="btn btn-link" onclick="return confirm('Are you sure?')">
+                                        <i class="fa fa-eraser" aria-hidden="true" title="Delete"></i>
+                                    </button>
+                                </form>
                             </td>
                         </tr>
                     <?php } ?>
